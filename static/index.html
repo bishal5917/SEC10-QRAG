@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SEC 10-Q RAG</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f1117; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: #1a1d27; padding: 16px 24px; border-bottom: 1px solid #2a2d3a; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.1rem; font-weight: 600; color: #fff; }
+    header span { font-size: 0.75rem; background: #2a2d3a; color: #888; padding: 2px 8px; border-radius: 4px; }
+    #sources-bar { background: #13151f; padding: 8px 24px; font-size: 0.78rem; color: #666; border-bottom: 1px solid #1e2030; }
+    #sources-bar b { color: #888; }
+    main { flex: 1; display: flex; flex-direction: column; max-width: 860px; width: 100%; margin: 0 auto; padding: 24px 16px; gap: 16px; }
+    #chat { flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; min-height: 300px; }
+    .msg { display: flex; flex-direction: column; gap: 6px; }
+    .msg.user .bubble { background: #1e3a5f; color: #cce4ff; align-self: flex-end; border-radius: 12px 12px 2px 12px; }
+    .msg.bot  .bubble { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 2px 12px 12px 12px; }
+    .bubble { padding: 12px 16px; max-width: 90%; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; }
+    .sources-tag { font-size: 0.75rem; color: #4a9eff; padding: 0 4px; }
+    .chunks { font-size: 0.72rem; color: #555; margin-top: 4px; padding: 0 4px; }
+    .chunk-item { padding: 2px 0; }
+    .chunk-item .badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 0.65rem; margin-right: 4px; font-weight: 600; }
+    .badge.table  { background: #1a3a2a; color: #4caf82; }
+    .badge.text   { background: #1a2a3a; color: #4a9eff; }
+    .badge.figure { background: #2a1a3a; color: #b47eff; }
+    .badge.image  { background: #3a2a1a; color: #ff9f4a; }
+    .thinking { color: #555; font-style: italic; font-size: 0.85rem; }
+    #input-area { display: flex; flex-direction: column; gap: 8px; }
+    #filter-row { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: #666; }
+    #filter-select { background: #1a1d27; border: 1px solid #2a2d3a; color: #aaa; padding: 4px 8px; border-radius: 6px; font-size: 0.78rem; }
+    #input-row { display: flex; gap: 8px; }
+    #question { flex: 1; background: #1a1d27; border: 1px solid #2a2d3a; color: #e0e0e0; padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; resize: none; height: 56px; outline: none; }
+    #question:focus { border-color: #4a9eff; }
+    #send-btn { background: #1e3a5f; color: #4a9eff; border: 1px solid #2a5a8f; padding: 0 20px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: background 0.15s; }
+    #send-btn:hover { background: #254a7a; }
+    #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>SEC 10-Q RAG</h1>
+    <span id="model-tag">llama3:instruct</span>
+  </header>
+  <div id="sources-bar"><b>Indexed docs:</b> <span id="sources-list">loading...</span></div>
+
+  <main>
+    <div id="chat"></div>
+    <div id="input-area">
+      <div id="filter-row">
+        <label for="filter-select">Filter to document:</label>
+        <select id="filter-select"><option value="">All documents</option></select>
+      </div>
+      <div id="input-row">
+        <textarea id="question" placeholder="Ask a question about the SEC 10-Q filings..."></textarea>
+        <button id="send-btn">Ask</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const questionEl = document.getElementById('question');
+    const sendBtn = document.getElementById('send-btn');
+    const filterSelect = document.getElementById('filter-select');
+
+    async function loadSources() {
+      try {
+        const res = await fetch('/sources');
+        const data = await res.json();
+        document.getElementById('sources-list').textContent = data.sources.join(' · ') || 'none';
+        data.sources.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s; opt.textContent = s;
+          filterSelect.appendChild(opt);
+        });
+      } catch { document.getElementById('sources-list').textContent = 'unavailable'; }
+    }
+
+    function appendMsg(role, html) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.innerHTML = html;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return div;
+    }
+
+    function badgeHtml(type) {
+      return `<span class="badge ${type}">${type.toUpperCase()}</span>`;
+    }
+
+    async function ask() {
+      const q = questionEl.value.trim();
+      if (!q) return;
+      questionEl.value = '';
+      sendBtn.disabled = true;
+
+      appendMsg('user', `<div class="bubble">${q}</div>`);
+      const thinking = appendMsg('bot', `<div class="bubble thinking">Thinking...</div>`);
+
+      const payload = { question: q, top_k: 8 };
+      const filter = filterSelect.value;
+      if (filter) payload.source_filter = [filter];
+
+      try {
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        const sourcesHtml = data.sources.map(s =>
+          `<span style="color:#4a9eff">${s}</span>`).join(', ');
+
+        const chunksHtml = data.chunks.map(c =>
+          `<div class="chunk-item">${badgeHtml(c.chunk_type)} ${c.source} p${c.page} (${c.score}) — ${c.text_preview.slice(0,80)}...</div>`
+        ).join('');
+
+        thinking.innerHTML = `
+          <div class="bubble">${data.answer}</div>
+          <div class="sources-tag">SOURCE(S): ${sourcesHtml}</div>
+          <div class="chunks">${chunksHtml}</div>`;
+      } catch (e) {
+        thinking.innerHTML = `<div class="bubble" style="color:#f66">Error: ${e.message}</div>`;
+      }
+      sendBtn.disabled = false;
+      questionEl.focus();
+    }
+
+    sendBtn.addEventListener('click', ask);
+    questionEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); }
+    });
+
+    loadSources();
+  </script>
+</body>
+</html>
