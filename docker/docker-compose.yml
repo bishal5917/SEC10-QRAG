@@ -1,3 +1,6 @@
+version: "3.9"
+name: docker
+
 services:
   ollama:
     image: ollama/ollama:latest
@@ -17,9 +20,9 @@ services:
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+      timeout: 10s
+      retries: 15
+      start_period: 60s
 
   rag-app:
     build:
@@ -38,6 +41,9 @@ services:
       - EMBED_MODEL=nomic-embed-text
       - DATA_DIR=/app/data/pdfs
       - CHROMA_DIR=/app/data/chroma
+      - RERANK_ENABLED=true
+      - RERANK_CANDIDATES=20
+      - FIGURE_DETECTION_ENABLED=false
       - PYTHONUNBUFFERED=1
     depends_on:
       ollama:

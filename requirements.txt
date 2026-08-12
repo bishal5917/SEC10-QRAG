@@ -1,11 +1,7 @@
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 python-multipart==0.0.9
-unstructured[pdf]==0.14.4
-opencv-python-headless==4.9.0.80
-beautifulsoup4==4.12.3
 pdfplumber==0.11.0
-pdfminer.six==20221105
 pymupdf==1.24.5
 chromadb==0.5.3
 langchain-text-splitters==0.2.0

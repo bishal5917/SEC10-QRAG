@@ -127,3 +127,102 @@
 16:02:27 | INFO     |          -H "Content-Type: application/json" \
 16:02:27 | INFO     |          -d '{"question": "What were the total net sales?"}'
 16:02:27 | INFO     | =======================================================
+18:33:31 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+18:33:31 | INFO     | =======================================================
+18:33:31 | INFO     |  INGEST — index PDFs into ChromaDB
+18:33:31 | INFO     | =======================================================
+18:33:31 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+18:33:31 | WARNING  | rag-app is not running — starting stack...
+18:33:31 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+18:33:37 | INFO     | Running ingestion pipeline...
+18:33:37 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+18:39:14 | ERROR    | Command failed with exit code 1
+08:11:18 | INFO     | manage.py start — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+08:11:18 | INFO     | Starting stack — logs streaming live. Press Ctrl+C to stop.
+08:11:18 | ERROR    | Image not found. Run: python manage.py setup
+08:12:01 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+08:12:01 | INFO     | =======================================================
+08:12:01 | INFO     |  INGEST — index PDFs into ChromaDB
+08:12:01 | INFO     | =======================================================
+08:12:01 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+08:12:01 | WARNING  | rag-app is not running — starting stack...
+08:12:01 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+08:12:07 | INFO     | Running ingestion pipeline...
+08:12:07 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+08:17:09 | ERROR    | Command failed with exit code 1
+08:47:35 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+08:47:35 | INFO     | =======================================================
+08:47:35 | INFO     |  INGEST — index PDFs into ChromaDB
+08:47:35 | INFO     | =======================================================
+08:47:35 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+08:47:36 | WARNING  | rag-app is not running — starting stack...
+08:47:36 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+08:47:41 | INFO     | Running ingestion pipeline...
+08:47:41 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+08:52:32 | ERROR    | Command failed with exit code 1
+09:11:38 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+09:11:38 | INFO     | =======================================================
+09:11:38 | INFO     |  INGEST — index PDFs into ChromaDB
+09:11:38 | INFO     | =======================================================
+09:11:38 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+09:11:38 | WARNING  | rag-app is not running — starting stack...
+09:11:38 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+09:11:44 | INFO     | Running ingestion pipeline...
+09:11:44 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+09:16:26 | ERROR    | Command failed with exit code 1
+09:18:13 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+09:18:13 | INFO     | =======================================================
+09:18:13 | INFO     |  INGEST — index PDFs into ChromaDB
+09:18:13 | INFO     | =======================================================
+09:18:13 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+09:18:13 | WARNING  | rag-app is not running — starting stack...
+09:18:13 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+09:18:19 | INFO     | Running ingestion pipeline...
+09:18:19 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+09:23:24 | ERROR    | Command failed with exit code 1
+09:38:44 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+09:38:44 | INFO     | =======================================================
+09:38:44 | INFO     |  INGEST — index PDFs into ChromaDB
+09:38:44 | INFO     | =======================================================
+09:38:44 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+09:38:44 | WARNING  | rag-app is not running — starting stack...
+09:38:44 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+09:38:50 | INFO     | Running ingestion pipeline...
+09:38:50 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+09:43:36 | ERROR    | Command failed with exit code 1
+11:22:40 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+11:22:40 | INFO     | =======================================================
+11:22:40 | INFO     |  INGEST — index PDFs into ChromaDB
+11:22:40 | INFO     | =======================================================
+11:22:40 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+11:22:41 | WARNING  | rag-app is not running — starting stack...
+11:22:41 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+11:22:46 | INFO     | Running ingestion pipeline...
+11:22:46 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+11:29:12 | ERROR    | Command failed with exit code 130
+11:59:34 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+11:59:34 | INFO     | =======================================================
+11:59:34 | INFO     |  INGEST — index PDFs into ChromaDB
+11:59:34 | INFO     | =======================================================
+11:59:34 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+11:59:34 | WARNING  | rag-app is not running — starting stack...
+11:59:34 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+11:59:40 | INFO     | Running ingestion pipeline...
+11:59:40 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+12:03:19 | ERROR    | Command failed with exit code 130
+12:13:06 | INFO     | manage.py ingest — log saved to D:\Machine Learning\DocumentRetriever\manage.log
+12:13:06 | INFO     | =======================================================
+12:13:06 | INFO     |  INGEST — index PDFs into ChromaDB
+12:13:06 | INFO     | =======================================================
+12:13:06 | INFO     | Found 20 PDF(s) in D:\Machine Learning\DocumentRetriever\data\pdfs
+12:13:06 | WARNING  | rag-app is not running — starting stack...
+12:13:06 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml up -d --remove-orphans
+12:13:12 | INFO     | Running ingestion pipeline...
+12:13:12 | INFO     | $ docker compose -f D:\Machine Learning\DocumentRetriever\docker\docker-compose.yml exec rag-app python ingest.py
+12:23:11 | INFO     | 
+12:23:11 | INFO     | =======================================================
+12:23:11 | INFO     |  Ingestion complete!
+12:23:11 | INFO     |  Test: curl -X POST http://localhost:8000/query \
+12:23:11 | INFO     |          -H "Content-Type: application/json" \
+12:23:11 | INFO     |          -d '{"question": "What were the total net sales?"}'
+12:23:11 | INFO     | =======================================================

@@ -2,6 +2,7 @@
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$PROJECT_DIR/docker/docker-compose.yml"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -11,6 +12,7 @@ warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 # Make sure the stack is built first
 if ! docker image inspect rag-app &>/dev/null; then
     warn "Image not found. Run ./scripts/setup.sh first."
+    exit 1
 fi
 
 info "Starting stack — logs will stream live below."

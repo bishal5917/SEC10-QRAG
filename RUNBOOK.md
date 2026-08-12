@@ -1,176 +1,101 @@
-# Runbook — Run & Evaluate
-
-Step-by-step from a fresh machine to a full evaluation report.
-
----
-
-## Only RUN one container 
-
-- docker compose -f docker/docker-compose.yml build rag-app
-- docker compose -f docker/docker-compose.yml up -d --remove-orphans rag-app
+# Runbook
 
 ## Prerequisites
 
 - Docker Desktop installed and running
-- NVIDIA GPU + NVIDIA Container Toolkit *(optional — falls back to CPU)*
-- Your PDFs ready
-- `qna_data.csv` ground-truth file ready
+- NVIDIA GPU + Container Toolkit *(optional — falls back to CPU)*
 
 ---
 
-## Step 1 — Open the project
+## Quick Start (from scratch)
 
 ```bash
 cd /path/to/DocumentRetriever
-chmod +x scripts/*.sh
-```
 
----
-
-## Step 2 — One-time setup
-
-```bash
-./scripts/setup.sh
-```
-
-What it does:
-- Checks Docker and NVIDIA GPU
-- Builds the Docker image (`unstructured`, `pymupdf`, `chromadb`, etc.)
-- Starts Ollama
-- Pulls `llama3:instruct` (~4.7GB), `llava` (~4.7GB), `nomic-embed-text` (~270MB)
-- Starts the full stack in the background
-
-> Takes ~15–20 min on first run due to model downloads.
-
----
-
-## Step 3 — Add your PDFs
-
-```bash
+# 1. Add your PDFs
 cp /path/to/your/*.pdf data/pdfs/
+
+# 2. One-time setup (builds image, pulls models ~15 min first time)
+python manage.py setup
+
+# 3. Ingest PDFs into vector store
+python manage.py ingest
+
+# 4. Query via API or web UI
+open http://localhost:8000
 ```
 
 ---
 
-## Step 4 — Ingest PDFs
+## What Happens During Ingest
+
+Each PDF page is analyzed for:
+- **Text** — extracted via pymupdf
+- **Tables** — detected by pdfplumber, converted to markdown
+- **Figures/Charts** — detected by text-density analysis + embedded image detection, rendered at 150 DPI, described by llava
+
+All chunks are embedded with `nomic-embed-text` and stored in ChromaDB.
+
+---
+
+## Day-to-Day Commands
 
 ```bash
-# PDFs already in data/pdfs/
-./scripts/ingest.sh
-
-# Or point to a directory
-./scripts/ingest.sh /path/to/your/pdfs
-```
-
-What happens during ingest:
-- `unstructured` partitions each PDF into Text / Table / Image / FigureCaption elements
-- Geometry fallback detects vector charts (bar/line charts) that unstructured misses
-- Tables rendered as markdown, figures rendered as PNG (base64)
-- All chunks embedded via `nomic-embed-text` and stored in ChromaDB
-- image_b64 stored in metadata for figure chunks
-
-Logs will show chunk breakdown per PDF:
-```
-Loaded AAPL.pdf: 42 chunks {'text': 28, 'table': 13, 'figure': 1} in 3241ms
+python manage.py start     # Start stack (live logs, Ctrl+C to stop)
+python manage.py stop      # Stop everything
+python manage.py status    # Check container states
+python manage.py logs      # Tail logs
+python manage.py ingest    # Re-ingest after adding new PDFs
 ```
 
 ---
 
-## Step 5 — Verify the stack is up
+## Rebuild After Code Changes (without full setup)
+
+If you already have Ollama + models set up and only changed Python code:
 
 ```bash
-curl http://localhost:8000/health
-# Expected: {"status":"ok"}
+cd /path/to/DocumentRetriever
 
-curl http://localhost:8000/sources
-# Lists all indexed PDF filenames
+# Rebuild just the app image (keeps ollama + models intact)
+docker compose -f docker/docker-compose.yml build rag-app
+
+# Clean up dangling <none> images
+docker image prune -f
+
+# Restart with new code
+docker compose -f docker/docker-compose.yml up -d
+
+# Re-ingest (new extraction logic needs fresh chunks)
+docker compose -f docker/docker-compose.yml exec rag-app python ingest.py
 ```
+
+> No need to re-pull Ollama models. Only takes ~30 seconds for the rebuild.
 
 ---
 
-## Step 6 — Test queries manually
+## Query Examples
 
 ```bash
-# Text/table question → answered by llama3:instruct
+# Text/table question
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{"question": "How has Apple total net sales changed over time?"}'
-
-# Figure/chart question → answered by llava
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "What does the INTC revenue trend chart show?"}'
+  -d '{"question": "What were total net sales in Q3 2022?"}'
 
 # Filter to specific documents
 curl -X POST http://localhost:8000/query \
   -H "Content-Type: application/json" \
-  -d '{
-    "question": "What were iPhone revenues?",
-    "source_filter": ["2022 Q3 AAPL.pdf", "2023 Q1 AAPL.pdf"]
-  }'
+  -d '{"question": "What were iPhone revenues?", "source_filter": ["AAPL_10Q.pdf"]}'
 ```
-
-Or open the web UI: [http://localhost:8000](http://localhost:8000)
 
 ---
 
-## Step 7 — Run evaluation
+## Retrieval Pipeline
 
-The evaluation script queries the live API and computes 16 metrics.
-
-```bash
-# Full evaluation (all answerable questions)
-python evaluation/evaluate.py --csv /path/to/qna_data.csv
-
-# Quick smoke-test (first 10 questions only)
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --limit 10
-
-# Only table questions
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --chunk-type Table
-
-# Only text questions
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --chunk-type Text
-
-# Save full results to JSON
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --output results.json
 ```
-
-Metrics reported:
-
-| Group | Metrics |
-|---|---|
-| Retrieval | Context Precision, Recall, F1, MRR, nDCG |
-| Generation | BLEU, ROUGE-1/2/L, METEOR, BERTScore |
-| End-to-end | Faithfulness, Hallucination Rate, Factual Consistency, Answer Relevance, Exact Number Match |
-
-> Note: The evaluation CSV contains only Text and Table questions. Figure/chart questions are not in the CSV — llava is exercised only when chart pages are retrieved for relevant queries.
-
----
-
-## Day-to-day commands
-
-```bash
-# Start stack with live logs (day-to-day)
-./scripts/start.sh          # Ctrl+C to stop
-
-# Start stack in background
-docker compose -f docker/docker-compose.yml up -d
-
-# Stop everything
-docker compose -f docker/docker-compose.yml down
-
-# Re-ingest after adding new PDFs
-./scripts/ingest.sh
-
-# View logs
-docker logs rag-app -f
-docker logs ollama -f
-
-# List indexed sources
-curl http://localhost:8000/sources
-
-# Check which Ollama models are loaded
-docker exec ollama ollama list
+Query → Hybrid Search (Vector + BM25 keyword) → RRF Fusion → LLM Reranker → Top 8 chunks
+  ├─ Text/Table chunks → llama3:instruct → answer
+  └─ Figure chunks → llava (with raw image) → answer
 ```
 
 ---
@@ -178,12 +103,10 @@ docker exec ollama ollama list
 ## Troubleshooting
 
 | Problem | Fix |
-|---|---|
-| `Cannot reach API at http://localhost:8000` | Run `./scripts/start.sh` or `docker compose -f docker/docker-compose.yml up -d` |
-| `No PDFs found in data/pdfs` | Copy PDFs first — Step 3 |
-| Ollama model not found | `docker exec ollama ollama pull llama3:instruct` |
-| llava not found | `docker exec ollama ollama pull llava` |
-| GPU not detected | Install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) — falls back to CPU otherwise |
-| BERTScore slow on first eval run | Downloads `roberta-large` once — subsequent runs are fast |
-| Ingest slow | Normal — `unstructured` partitions each page, figure pages also render PNG |
-| Figure chunk not detected | Page may have a greyscale or scanned chart — switch to `strategy="hi_res"` in `pdf_loader.py` for better detection |
+|---------|-----|
+| API unreachable | `python manage.py start` |
+| No PDFs found | Copy PDFs to `data/pdfs/` first |
+| Model not found | `docker exec ollama ollama pull llama3:instruct` |
+| GPU not detected | Install NVIDIA Container Toolkit — CPU fallback works |
+| Ingest slow | Normal — figure pages call llava for descriptions |
+| Check logs | `python manage.py logs` or see `manage.log` in project root |

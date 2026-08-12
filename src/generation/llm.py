@@ -20,7 +20,7 @@ Rules:
   and period labels to correctly attribute each value.
 - Quote exact figures from the context. Do not round or estimate.
 - Cite source document(s) at the end: SOURCE(S): <filename>, ...
-- If the context does not contain enough information, say so clearly.
+- If the context does not contain enough information, say so clearly; Otherwise answer the question concisely, with no fluff.
 
 CONTEXT:
 {context}

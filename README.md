@@ -1,164 +1,256 @@
 # Document Retriever — Multimodal RAG System
 
-RAG-based information retrieval over PDF documents. Answers questions about text, tables, and figures/charts using a hybrid multimodal pipeline — `llama3:instruct` for text and tables, `llava` for charts and diagrams.
+RAG-based information retrieval over SEC 10-Q PDF filings. Answers questions using text, tables, and figures/charts across multiple documents. Fully Dockerized with Ollama (no external API keys).
+
+---
 
 ## Architecture
 
 ```
-PDF files
-   │
-   ▼
-pdf_loader.py   ← unstructured detects element types (Text/Table/Image/FigureCaption)
-                   + geometry fallback for vector charts (bar/line charts)
-                   tables → markdown via BeautifulSoup
-                   figures → PNG rendered at 150 DPI → base64
-   │
-   ▼
-vector_store.py ← text chunks split (800 chars), table/figure kept whole
-                   all embedded via nomic-embed-text → stored in ChromaDB
-                   image_b64 stored in metadata (not embedded)
-   │
-   ▼
-retriever.py    ← cosine similarity search, optional source filter
-                   image_b64 passed through from metadata
-   │
-   ▼
-llm.py          ← routes by chunk type:
-                   text/table → llama3:instruct
-                   figure     → llava (receives PNG image)
-   │
-   ▼
-app.py          ← FastAPI: POST /query
+┌─────────────────────────────────────────────────────────────────────┐
+│                         INGESTION PIPELINE                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  PDF Files (data/pdfs/)                                             │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐       │
+│  │  pdf_loader.py — Per-page multimodal extraction          │       │
+│  │                                                          │       │
+│  │  Text Detection:                                         │       │
+│  │    pymupdf get_text("text", sort=True)                   │       │
+│  │                                                          │       │
+│  │  Table Detection:                                        │       │
+│  │    pdfplumber find_tables() → markdown with headers      │       │
+│  │                                                          │       │
+│  │  Figure Detection (2 methods):                           │       │
+│  │    1. Raster images: pymupdf get_images() (>200x200px)   │       │
+│  │    2. Vector charts: text-density analysis (<25% coverage)│       │
+│  │                                                          │       │
+│  │  Figure Description:                                     │       │
+│  │    Render page at 150 DPI → send to llava → text desc    │       │
+│  └─────────────────────────────────────────────────────────┘       │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐       │
+│  │  vector_store.py — Chunking + Embedding + Storage        │       │
+│  │                                                          │       │
+│  │  Chunking:                                               │       │
+│  │    Text → split at 800 chars with 150 overlap            │       │
+│  │    Tables → kept whole (not split)                       │       │
+│  │    Figures → kept whole (description as text)            │       │
+│  │                                                          │       │
+│  │  Embedding:                                              │       │
+│  │    nomic-embed-text via Ollama (768 dims)                │       │
+│  │                                                          │       │
+│  │  Storage:                                                │       │
+│  │    ChromaDB (persistent, cosine similarity)              │       │
+│  │    Figure images saved to disk (not in DB metadata)      │       │
+│  └─────────────────────────────────────────────────────────┘       │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                         RETRIEVAL PIPELINE                           │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  User Query                                                         │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐       │
+│  │  retriever.py — Hybrid Search                            │       │
+│  │                                                          │       │
+│  │  1. Vector Search: ChromaDB cosine similarity (top 20)   │       │
+│  │  2. BM25 Keyword Search: term frequency scoring (top 20) │       │
+│  │  3. Reciprocal Rank Fusion: merge both (0.6/0.4 weight)  │       │
+│  └─────────────────────────────────────────────────────────┘       │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐       │
+│  │  reranker.py — LLM-as-Judge Reranking                    │       │
+│  │                                                          │       │
+│  │  Score each chunk 0-10 for relevance using llama3        │       │
+│  │  20 candidates → top 8 kept                              │       │
+│  └─────────────────────────────────────────────────────────┘       │
+│       │                                                             │
+│       ▼                                                             │
+│  ┌─────────────────────────────────────────────────────────┐       │
+│  │  llm.py — Dual-Path Generation                           │       │
+│  │                                                          │       │
+│  │  Text/Table chunks → llama3:instruct (single call)       │       │
+│  │  Figure chunks → llava + raw PNG image (per-figure call) │       │
+│  │                                                          │       │
+│  │  Final answer with source citations                      │       │
+│  └─────────────────────────────────────────────────────────┘       │
+│       │                                                             │
+│       ▼                                                             │
+│  Answer + Sources + Chunk Previews                                  │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## Models
+---
 
-| Model | Purpose |
-|---|---|
-| `llama3:instruct` | Text and table question answering |
-| `llava` | Chart and figure visual understanding |
-| `nomic-embed-text` | Embeddings for all chunk types |
+## Tech Stack
 
-## Chunk Types
+| Component | Tool | Purpose |
+|-----------|------|---------|
+| LLM (text/tables) | `llama3:instruct` via Ollama | Answer generation from text and table context |
+| Vision Model | `llava` via Ollama | Chart/figure description at ingest + reading at query time |
+| Embeddings | `nomic-embed-text` via Ollama | 768-dim vectors for semantic search |
+| Vector DB | ChromaDB (persistent) | Store and query embeddings with cosine similarity |
+| PDF Text | pymupdf (fitz) | Fast text extraction with positional sorting |
+| PDF Tables | pdfplumber | Structural table detection → markdown conversion |
+| PDF Images | pymupdf `get_images()` | Detect embedded raster images (charts/diagrams) |
+| Figure Detection | Text-density analysis | Detect pages with charts by measuring text coverage |
+| Chunking | langchain `RecursiveCharacterTextSplitter` | Split text at 800 chars with 150 overlap |
+| Keyword Search | Custom BM25 implementation | Term-frequency scoring for exact-match queries |
+| Rank Fusion | Reciprocal Rank Fusion (RRF) | Merge vector + BM25 results by rank |
+| Reranker | LLM-as-judge (llama3) | Score chunk relevance 0-10, keep top 8 |
+| API | FastAPI + uvicorn | REST API with auto-generated docs |
+| Containerization | Docker Compose | Ollama + rag-app, GPU passthrough |
 
-| Type | Detection | Storage | Generation |
-|---|---|---|---|
-| `text` | unstructured NarrativeText/Title/ListItem | text string, split at 800 chars | llama3:instruct |
-| `table` | unstructured Table element | markdown string, not split | llama3:instruct |
-| `figure` | unstructured Image/FigureCaption + geometry fallback for vector charts | spatial text (for retrieval) + PNG base64 in metadata | llava |
+---
 
-## Prerequisites
+## Project Structure
 
-- Docker Desktop (with Compose v2)
-- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) *(optional but recommended)*
-
-## Quick Start
-
-### 1. Setup (one-time)
-
-```bash
-chmod +x scripts/*.sh
-./scripts/setup.sh
+```
+DocumentRetriever/
+├── app.py                      # FastAPI endpoints (POST /query, GET /sources)
+├── ingest.py                   # Ingestion entry point
+├── manage.py                   # CLI: setup, ingest, start, stop, status, logs
+├── requirements.txt
+├── data/
+│   ├── pdfs/                   # Drop your SEC 10-Q PDFs here
+│   └── chroma/                 # ChromaDB persistent storage + figure images
+├── docker/
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── src/
+│   ├── config.py               # All configuration (env vars)
+│   ├── logger.py
+│   ├── pipeline.py             # Orchestrates retrieve → rerank → generate
+│   ├── ingestion/
+│   │   ├── pdf_loader.py       # Multimodal PDF extraction (text/tables/figures)
+│   │   └── vector_store.py     # Chunking, embedding, ChromaDB storage
+│   ├── retrieval/
+│   │   ├── retriever.py        # Hybrid search (vector + BM25 + RRF)
+│   │   ├── bm25.py            # BM25 index + Reciprocal Rank Fusion
+│   │   └── reranker.py        # LLM-based reranking
+│   └── generation/
+│       └── llm.py             # Dual-path generation (llama3 + llava)
+├── static/
+│   └── index.html             # Web UI
+├── evaluation/
+│   ├── evaluate.py            # Automated evaluation (16 metrics)
+│   └── metrics.py
+├── scripts/
+│   ├── setup.sh
+│   ├── ingest.sh
+│   └── start.sh
+├── RUNBOOK.md
+└── .env.example
 ```
 
-This will:
-- Build the Docker image
-- Start Ollama
-- Pull `llama3:instruct`, `llava`, and `nomic-embed-text`
-- Start the full stack
+---
 
-> Takes ~10–15 min on first run — `llava` is ~4.7GB.
+## How Each Modality is Handled
 
-### 2. Add your PDFs
+### Text
+- **Detection**: Every page — `pymupdf.get_text("text", sort=True)`
+- **Chunking**: Split at 800 chars with 150 char overlap
+- **Embedding**: Full text chunk → `nomic-embed-text`
+- **Generation**: All text chunks combined as context → `llama3:instruct`
 
-```bash
-cp /path/to/your/*.pdf data/pdfs/
-```
+### Tables
+- **Detection**: `pdfplumber.find_tables()` — detects structured row/column layouts
+- **Extraction**: Cell data → markdown format with headers and separators
+- **Chunking**: Kept whole (not split) — tables lose meaning when fragmented
+- **Embedding**: Markdown text → `nomic-embed-text`
+- **Generation**: Markdown passed as context → `llama3:instruct` reads column/row structure
 
-### 3. Ingest PDFs
+### Figures / Charts
+- **Detection**: Two complementary methods:
+  1. **Raster images**: `pymupdf.get_images()` — finds embedded PNG/JPEG charts (>200x200px)
+  2. **Text-density**: If text covers <25% of a page, a large non-text element exists (vector chart, diagram)
+- **Description**: Page rendered at 150 DPI → PNG → sent to `llava` → detailed text description stored
+- **Storage**: Description text embedded for search; raw PNG saved to disk for query-time re-reading
+- **Generation**: At query time, raw PNG image is sent back to `llava` with the user's specific question
 
-```bash
-./scripts/ingest.sh
-
-# Or point directly to a directory
-./scripts/ingest.sh /path/to/your/pdfs
-```
-
-### 4. Query the API
-
-```bash
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How has Apple total net sales changed over time?"}'
-```
-
-Filter to specific documents:
-
-```bash
-curl -X POST http://localhost:8000/query \
-  -H "Content-Type: application/json" \
-  -d '{
-    "question": "What were the iPhone revenues?",
-    "source_filter": ["2022 Q3 AAPL.pdf", "2023 Q1 AAPL.pdf"]
-  }'
-```
-
-### 5. Interactive API Docs
-
-Open [http://localhost:8000/docs](http://localhost:8000/docs)
-
-## Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/query` | Ask a question, get an answer with citations |
-| GET | `/sources` | List all indexed PDF filenames |
-| GET | `/health` | Health check |
+---
 
 ## Configuration
 
-All settings in `src/config.py`, overridable via environment variables (see `.env.example`):
+All settings via environment variables (see `.env.example`):
 
 | Variable | Default | Description |
-|---|---|---|
-| `LLM_MODEL` | `llama3:instruct` | Ollama model for text/table generation |
-| `VISION_MODEL` | `llava` | Ollama model for figure/chart generation |
-| `EMBED_MODEL` | `nomic-embed-text` | Ollama model for embeddings |
-| `CHUNK_SIZE` | `800` | Text chunk size in characters |
+|----------|---------|-------------|
+| `OLLAMA_BASE_URL` | `http://ollama:11434` | Ollama API endpoint |
+| `LLM_MODEL` | `llama3:instruct` | Text/table generation model |
+| `VISION_MODEL` | `llava` | Figure/chart vision model |
+| `EMBED_MODEL` | `nomic-embed-text` | Embedding model |
+| `CHUNK_SIZE` | `800` | Text chunk size (chars) |
 | `CHUNK_OVERLAP` | `150` | Overlap between text chunks |
-| `TOP_K` | `8` | Number of chunks retrieved per query |
+| `TOP_K` | `8` | Final chunks sent to LLM |
+| `RERANK_ENABLED` | `true` | Enable LLM reranking |
+| `RERANK_CANDIDATES` | `20` | Over-retrieve this many before reranking |
 
-## Evaluation
+---
 
-```bash
-# Full evaluation
-python evaluation/evaluate.py --csv /path/to/qna_data.csv
+## API
 
-# Quick smoke-test
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --limit 10
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/query` | Ask a question → answer with source citations |
+| `GET` | `/sources` | List all indexed PDF filenames |
+| `GET` | `/health` | Health check |
+| `GET` | `/` | Web UI |
+| `GET` | `/docs` | Auto-generated API documentation |
 
-# Save results
-python evaluation/evaluate.py --csv /path/to/qna_data.csv --output results.json
+### Query Request
+
+```json
+{
+  "question": "What were total net sales in Q3 2022?",
+  "top_k": 8,
+  "source_filter": ["AAPL_10Q_2022Q3.pdf"]
+}
 ```
 
-16 metrics across retrieval, generation, and end-to-end categories. See `RUNBOOK.md` for full evaluation guide.
+### Query Response
 
-## Useful Commands
+```json
+{
+  "answer": "Total net sales were $83.0 billion...",
+  "sources": ["AAPL_10Q_2022Q3.pdf"],
+  "chunks": [
+    {
+      "source": "AAPL_10Q_2022Q3.pdf",
+      "page": 4,
+      "chunk_type": "table",
+      "score": 0.89,
+      "text_preview": "| Products | $65,085 | $63,722 |..."
+    }
+  ]
+}
+```
+
+---
+
+## Quick Start
 
 ```bash
-# Stream live logs
-./scripts/start.sh
+cd DocumentRetriever
 
-# Stop everything
-docker compose -f docker/docker-compose.yml down
+# 1. Add PDFs
+cp /path/to/your/*.pdf data/pdfs/
 
-# Re-ingest after adding new PDFs
-./scripts/ingest.sh
+# 2. One-time setup (~15 min, downloads models)
+python manage.py setup
 
-# View logs
-docker logs rag-app -f
-docker logs ollama -f
+# 3. Ingest
+python manage.py ingest
 
-# List indexed sources
-curl http://localhost:8000/sources
+# 4. Query
+open http://localhost:8000
 ```
+
+See `RUNBOOK.md` for detailed commands, rebuild instructions, and troubleshooting.

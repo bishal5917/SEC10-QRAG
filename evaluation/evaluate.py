@@ -10,15 +10,13 @@ Usage:
     python evaluation/evaluate.py --csv /path/to/qna_data.csv
 
     # Quick smoke-test
-    python evaluation/evaluate.py --csv /path/to/qna_data.csv --limit 10
+    python evaluation/evaluate.py --csv data/csvs/qna_data.csv --limit 5
 
     # Only table questions
     python evaluation/evaluate.py --csv /path/to/qna_data.csv --chunk-type Table
 
     # Save full results
     python evaluation/evaluate.py --csv /path/to/qna_data.csv --output results.json
-
-    python evaluation/evaluate.py --csv /data/csvs/qna_data.csv --limit 5
 """
 
 import argparse
@@ -137,34 +135,34 @@ def _print_report(results: list, report: dict) -> None:
             bar = _bar(score)
         print(f"  │  {bar}  {labels[m]}")
 
-    # ── By chunk type ──────────────────────────────────────────
-    print("\n  ├─ BREAKDOWN BY CHUNK TYPE " + "─" * 38)
-    print(f"  │  {'Chunk Type':<10} {'Prec':>6} {'Recall':>7} {'ROUGE-L':>8} {'ExactNum':>9} {'Faith':>7} {'Halluc':>7}")
-    print("  │  " + "-" * 58)
-    for ct, ms in report["by_chunk_type"].items():
-        print(f"  │  {ct:<10} {ms['context_precision']:>6.3f} {ms['context_recall']:>7.3f} "
-              f"{ms['rouge_l']:>8.3f} {ms['exact_number_match']:>9.3f} "
-              f"{ms['faithfulness']:>7.3f} {ms['hallucination_rate']:>7.3f}")
+    # # ── By chunk type ──────────────────────────────────────────
+    # print("\n  ├─ BREAKDOWN BY CHUNK TYPE " + "─" * 38)
+    # print(f"  │  {'Chunk Type':<10} {'Prec':>6} {'Recall':>7} {'ROUGE-L':>8} {'ExactNum':>9} {'Faith':>7} {'Halluc':>7}")
+    # print("  │  " + "-" * 58)
+    # for ct, ms in report["by_chunk_type"].items():
+    #     print(f"  │  {ct:<10} {ms['context_precision']:>6.3f} {ms['context_recall']:>7.3f} "
+    #           f"{ms['rouge_l']:>8.3f} {ms['exact_number_match']:>9.3f} "
+    #           f"{ms['faithfulness']:>7.3f} {ms['hallucination_rate']:>7.3f}")
 
     # ── By question type ───────────────────────────────────────
-    print("\n  ├─ BREAKDOWN BY QUESTION TYPE " + "─" * 35)
-    print(f"  │  {'Question Type':<25} {'MRR':>5} {'nDCG':>6} {'BLEU':>6} {'ROUGE-L':>8} {'ExactNum':>9}")
-    print("  │  " + "-" * 61)
-    for qt, ms in report["by_question_type"].items():
-        short = qt.replace("Single-Doc ", "").replace(" RAG", "")
-        print(f"  │  {short:<25} {ms['mrr']:>5.3f} {ms['ndcg']:>6.3f} "
-              f"{ms['bleu']:>6.3f} {ms['rouge_l']:>8.3f} {ms['exact_number_match']:>9.3f}")
+    # print("\n  ├─ BREAKDOWN BY QUESTION TYPE " + "─" * 35)
+    # print(f"  │  {'Question Type':<25} {'MRR':>5} {'nDCG':>6} {'BLEU':>6} {'ROUGE-L':>8} {'ExactNum':>9}")
+    # print("  │  " + "-" * 61)
+    # for qt, ms in report["by_question_type"].items():
+    #     short = qt.replace("Single-Doc ", "").replace(" RAG", "")
+    #     print(f"  │  {short:<25} {ms['mrr']:>5.3f} {ms['ndcg']:>6.3f} "
+    #           f"{ms['bleu']:>6.3f} {ms['rouge_l']:>8.3f} {ms['exact_number_match']:>9.3f}")
 
     # ── Weak spots ─────────────────────────────────────────────
-    print("\n  └─ WEAK SPOTS (metrics scoring below 0.5) " + "─" * 22)
-    weak = [(m, avgs[m]) for m in ALL_METRICS if m != "hallucination_rate" and avgs[m] < 0.5]
-    if weak:
-        for m, v in sorted(weak, key=lambda x: x[1]):
-            print(f"     ⚠  {m:<25} {v:.3f}")
-    else:
-        print("     ✓  All metrics above 0.5")
-
-    print("═" * 65 + "\n")
+    # print("\n  └─ WEAK SPOTS (metrics scoring below 0.5) " + "─" * 22)
+    # weak = [(m, avgs[m]) for m in ALL_METRICS if m != "hallucination_rate" and avgs[m] < 0.5]
+    # if weak:
+    #     for m, v in sorted(weak, key=lambda x: x[1]):
+    #         print(f"     ⚠  {m:<25} {v:.3f}")
+    # else:
+    #     print("     ✓  All metrics above 0.5")
+    #
+    # print("═" * 65 + "\n")
 
 
 def run_evaluation(

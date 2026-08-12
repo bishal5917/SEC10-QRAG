@@ -98,6 +98,10 @@ def cmd_setup():
     run(compose("down", "--remove-orphans"), check=False)
     subprocess.run(["docker", "rm", "-f", "ollama", "rag-app"], capture_output=True)
 
+    # 3b. Remove dangling images (<none> tags) to free disk space
+    log.info("Removing dangling images...")
+    subprocess.run(["docker", "image", "prune", "-f"], capture_output=True)
+
     # 4. Build image
     log.info("Building Docker image (this may take a few minutes)...")
     run(compose("build", "--no-cache"))

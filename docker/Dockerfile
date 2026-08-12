@@ -2,14 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# System deps for unstructured[pdf] + pymupdf + opencv
+# System deps for pdfplumber + pymupdf
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpoppler-cpp-dev \
     poppler-utils \
-    tesseract-ocr \
-    libmagic1 \
-    libgl1 \
-    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

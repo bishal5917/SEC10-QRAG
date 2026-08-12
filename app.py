@@ -18,18 +18,15 @@ pipeline: Optional[RAGPipeline] = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # global pipeline
-    log.info("Starting up — initializing RAG pipeline...")
-    # pipeline = RAGPipeline()
-    # log.info("RAG pipeline ready")
+    log.info("Starting up — RAG API ready. Run ingest before querying.")
     yield
     log.info("Shutting down")
 
 
 app = FastAPI(
     title="SEC 10-Q RAG API",
-    description="RAG-based information retrieval over SEC 10-Q filings",
-    version="1.0.0",
+    description="Multimodal RAG over SEC 10-Q filings (text, tables, figures)",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -79,7 +76,7 @@ def query(request: QueryRequest):
             pipeline = RAGPipeline()
         except Exception as e:
             log.error(f"Pipeline init failed: {e}")
-            raise HTTPException(status_code=503, detail="Collection not initialized.")
+            raise HTTPException(status_code=503, detail="Collection not found. Run ingest first.")
     log.info(f"Query: \"{request.question}\" | top_k={request.top_k} | filter={request.source_filter}")
     result = pipeline.query(
         question=request.question,
@@ -105,4 +102,4 @@ def list_sources():
         log.info(f"Listed {len(sources)} indexed sources")
         return {"sources": sources, "count": len(sources)}
     except Exception:
-        return {"status": [], "count": 0, "detail": "No documents found."}
+        return {"sources": [], "count": 0, "detail": "No documents ingested yet"}

@@ -4,6 +4,13 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="$PROJECT_DIR/docker/docker-compose.yml"
+LOG_FILE="$PROJECT_DIR/setup.log"
+
+# Tee all output to setup.log so it's never lost
+exec > >(tee -a "$LOG_FILE") 2>&1
+echo "======================================"
+echo " Setup started: $(date)"
+echo "======================================"
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
@@ -37,7 +44,10 @@ else
 fi
 
 # ── 3. Build the RAG app image ────────────────────────────────────────────────
-info "Building RAG app Docker image..."
+info "Cleaning up any stale containers..."
+docker compose -f "$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
+docker rm -f ollama rag-app 2>/dev/null || true
+info "Build RAG app Docker image..."
 docker compose -f "$COMPOSE_FILE" build --no-cache
 info "Build complete"
 
