@@ -1,0 +1,66 @@
+# ============================================================
+# .gitignore — Multimodal RAG Project
+# ============================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# --- Virtual Environment ---
+venv/
+.venv/
+env/
+
+# --- Environment Variables (contains API keys!) ---
+.env
+
+# --- Model Cache (downloaded HuggingFace + CLIP models, ~2GB) ---
+models_cache/
+
+# --- Vector Store (Qdrant persistent data, re-generated via ingest.py) ---
+vectorstore/
+
+# --- Langfuse container data (bind-mounted, local observability) ---
+langfuse_data/
+
+# --- Extracted Data (rendered page images, re-generated via ingest.py) ---
+extracted/
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Logs ---
+*.log
+
+# --- Evaluation output ---
+output/
+evaluation_results.csv
+
+# --- Jupyter (if used for experimentation) ---
+.ipynb_checkpoints/
+
+# --- Test / lint / type caches ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- NLTK data (auto-downloaded for METEOR) ---
+nltk_data/
+
+# --- Temp / misc ---
+*.tmp
+*.bak
