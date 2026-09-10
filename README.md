@@ -4,6 +4,13 @@ A production-quality Retrieval-Augmented Generation system that answers question
 
 ---
 
+## Dataset
+
+```
+https://github.com/docugami/KG-RAG-datasets/tree/main/sec-10-q/data/v1/docs
+```
+
+
 ## Architecture
 
 ```
