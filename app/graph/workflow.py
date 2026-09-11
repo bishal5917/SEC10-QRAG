@@ -37,7 +37,7 @@ from app.embeddings.text_embeddings import BGETextEmbeddings
 from app.graph import nodes
 from app.graph.state import RAGState
 from app.retrieval.multimodal_retriever import MultiModalRetriever
-from app.vectorstore.store import MultiModalVectorStore
+from app.vector_store.store import MultiModalVectorStore
 
 logger = get_logger(__name__)
 

@@ -32,7 +32,7 @@ from app.document_processing.table_extractor import TableExtractor
 from app.document_processing.text_splitter import split_documents
 from app.embeddings.clip_embeddings import CLIPImageEmbeddings
 from app.embeddings.text_embeddings import BGETextEmbeddings
-from app.vectorstore.store import MultiModalVectorStore
+from app.vector_store.store import MultiModalVectorStore
 
 console = Console()
 logger = get_logger(__name__)

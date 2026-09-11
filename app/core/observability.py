@@ -6,10 +6,6 @@ Provides:
     - get_callbacks():        [handler] or [] for LangGraph .invoke(config=...)
     - observe():              a decorator to trace direct (non-LangChain) calls
 
-Why v3/v4:
-    Langfuse v2's callback required the legacy langchain.callbacks module, which
-    langchain 1.x removed. The v3 server + v4 SDK support langchain 1.x cleanly.
-
 How it fits the pipeline:
     The pipeline is LangChain/LangGraph-native, so passing the handler into the
     graph invocation captures the full trace tree (retrieve → rerank → prompt →

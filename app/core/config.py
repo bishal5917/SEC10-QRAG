@@ -101,7 +101,7 @@ class Settings(BaseSettings):
     @property
     def vectorstore_dir(self) -> Path:
         """Directory for Qdrant persistent storage (embedded mode)."""
-        path = self.project_root / "vectorstore"
+        path = self.project_root / "vector_store"
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -115,10 +115,9 @@ class Settings(BaseSettings):
     show_retrieval_trace: bool = True             # print retrieved chunks + what's sent to the LLM
     langchain_debug: bool = True                  # LangChain built-in console tracing (retrieval, rerank, LLM steps)
 
-    # Langfuse (self-hosted v2) — visual trace dashboard. Off by default so the
-    # app runs without the Langfuse container. Keys come from the .env file.
     enable_langfuse: bool = True                 # master switch for Langfuse tracing
     langfuse_host: str = "http://localhost:3000"  # local self-hosted Langfuse URL
+    langfuse_host: str = "https://us.cloud.langfuse.com" # cloud hosted
     langfuse_public_key: Optional[str] = Field(default=None, alias="LANGFUSE_PUBLIC_KEY")
     langfuse_secret_key: Optional[str] = Field(default=None, alias="LANGFUSE_SECRET_KEY")
 
